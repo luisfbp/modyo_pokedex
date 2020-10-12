@@ -1,11 +1,11 @@
-package com.modyo.chanllenge.pokedex.model;
+package com.modyo.chanllenge.pokedex.model.pokeapi;
 
 import lombok.Data;
 
 import java.util.List;
 
 @Data
-public class MultiResponseDTO {
+public class MultiPokeApiResponseDTO {
 
     private int count;
     private String next;
@@ -13,7 +13,7 @@ public class MultiResponseDTO {
     private List<Result> results;
 
     @Data
-    static class Result {
+    public static class Result {
 
         private String name;
         private String url;

@@ -1,48 +1,35 @@
 package com.modyo.chanllenge.pokedex.service;
 
 import com.modyo.chanllenge.pokedex.client.PokeApiHttpClient;
-import com.modyo.chanllenge.pokedex.config.CacheConfig;
-import com.modyo.chanllenge.pokedex.model.api.CommonResponseDTO;
-import com.modyo.chanllenge.pokedex.model.pokeapi.MultiPokeApiResponseDTO;
+import com.modyo.chanllenge.pokedex.model.pokeapi.Pokemon;
+import com.modyo.chanllenge.pokedex.model.pokeapi.Result;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * Handles business logic to gather pokemon data
+ */
 @Service
 public class PokedexServiceImpl implements PokedexService {
 
     @Autowired
     private PokeApiHttpClient client;
 
+    public List<Pokemon> listPokemons(int page) {
 
-    @Cacheable("pokemonListCache")
-    public Mono<CommonResponseDTO<String>> listPokemons(int page){
-        return client.getPokemon(page).map(multiPokeApiResponseDTO -> mapToCommonResponseDTO(multiPokeApiResponseDTO, page));
-    }
+        List<Result> allPokemonResults = client.getPokemons(page).getResults();
 
-    private CommonResponseDTO<String> mapToCommonResponseDTO(MultiPokeApiResponseDTO multiPokeApiResponseDTO, int currentPage) {
+        if (CollectionUtils.isEmpty(allPokemonResults)) return Collections.emptyList();
 
-        if (multiPokeApiResponseDTO == null) return null;
-
-        CommonResponseDTO<String> commonResponseDTO = new CommonResponseDTO<>();
-
-        commonResponseDTO.setCurrentPage(currentPage);
-        commonResponseDTO.setTotalItems(multiPokeApiResponseDTO.getCount());
-        commonResponseDTO.setTotalPages(Math.round(multiPokeApiResponseDTO.getCount() / 20));
-
-        if (!CollectionUtils.isEmpty(multiPokeApiResponseDTO.getResults())) {
-            List<String> pokemonList = multiPokeApiResponseDTO.getResults().stream()
-                    .map(MultiPokeApiResponseDTO.Result::getName)
-                    .collect(Collectors.toList());
-            commonResponseDTO.setItems(pokemonList);
-        }
-
-        return commonResponseDTO;
+        return Flux.fromIterable(allPokemonResults)
+                .map(Result::getName)
+                .flatMap(client::getPokemon)
+                .collectList().block();
     }
 
 }

@@ -56,7 +56,7 @@ public class CacheConfig {
      */
     public enum CacheSetup {
 
-        CACHE_POKEMON_LIST("pokemonListCache", 3000, 100);
+        CACHE_POKEMON_LIST("pokemonCache", 600, 100);
 
         private final String cacheName;
         private final int expirationTime;

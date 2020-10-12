@@ -1,13 +1,22 @@
 package com.modyo.chanllenge.pokedex.client;
 
 import com.modyo.chanllenge.pokedex.model.pokeapi.MultiPokeApiResponseDTO;
+import com.modyo.chanllenge.pokedex.model.pokeapi.Pokemon;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+
+import javax.net.ssl.SSLException;
 
 @Component
 public class PokeApiHttpClient {
@@ -23,7 +32,15 @@ public class PokeApiHttpClient {
     @Value("${api.pokeapi.host}")
     private String pokeApiHost;
 
-    public Mono<MultiPokeApiResponseDTO> getPokemon(int page) {
+    @Cacheable("")
+    public Mono<Pokemon> getPokemon(String name) {
+        return buildPokeApiWebClient().get()
+                .uri(POKEMON_ENDPOINT + "/{name}", name)
+                .retrieve()
+                .bodyToMono(Pokemon.class);
+    }
+
+    public MultiPokeApiResponseDTO getPokemons(int page) {
 
         int offset = page * ITEMS_PER_PAGE;
 
@@ -34,14 +51,34 @@ public class PokeApiHttpClient {
                         .queryParam(LIMIT_QUERY_PARAM, ITEMS_PER_PAGE)
                         .build())
                 .retrieve()
-                .bodyToMono(MultiPokeApiResponseDTO.class);
+                .bodyToMono(MultiPokeApiResponseDTO.class).block();
+
     }
 
     private WebClient buildPokeApiWebClient() {
-        return WebClient
-                .builder()
-                    .baseUrl(pokeApiHost)
-                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .build();
+
+        try {
+            SslContext sslContext = SslContextBuilder
+                    .forClient()
+                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                    .build();
+
+            HttpClient httpClient = HttpClient.create().secure(t -> t.sslContext(sslContext));
+
+            return WebClient
+                    .builder()
+                        .clientConnector(new ReactorClientHttpConnector(httpClient))
+                        .baseUrl(pokeApiHost)
+                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .exchangeStrategies(ExchangeStrategies.builder()
+                            .codecs(configurer -> configurer
+                                    .defaultCodecs()
+                                    .maxInMemorySize(16 * 1024 * 1024))
+                            .build())
+                    .build();
+        } catch (SSLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

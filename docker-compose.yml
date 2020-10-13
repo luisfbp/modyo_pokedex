@@ -1,0 +1,10 @@
+version: '3'
+services:
+  pokedex-api:
+    build: .
+    image: pokedex-api
+    network_mode: "host"
+    hostname: localhost
+    restart: always
+    ports:
+      - 8080:8080

@@ -9,7 +9,6 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -38,7 +37,12 @@ public class PokeApiHttpClient {
     @Value("${api.pokeapi.host}")
     private String pokeApiHost;
 
-    @Cacheable("pokemonCache")
+    /**
+     * Gets a single pokemon by name.
+     * Makes use of a reactive library for making nonblocking calls, allowing to make all calls at the same time.
+     * @param name Pokemon Name
+     * @return {@link Pokemon}
+     */
     public Mono<Pokemon> getPokemon(String name) {
         return buildPokeApiWebClient().get()
                 .uri(POKEMON_ENDPOINT + "/{name}", name)
@@ -46,7 +50,11 @@ public class PokeApiHttpClient {
                 .bodyToMono(Pokemon.class);
     }
 
-    @Cacheable("pokemonCache")
+    /**
+     * Gets the list of Pokemons to be displayed per page.
+     * @param page Number of the page.
+     * @return DTO representing all pokemons for a single page.
+     */
     public MultiPokeApiResponseDTO getPokemons(int page) {
 
         int offset = page * ITEMS_PER_PAGE;
@@ -62,6 +70,11 @@ public class PokeApiHttpClient {
 
     }
 
+    /**
+     * Builds the {@link WebClient} with some default configs.
+     * @return {@link WebClient} properly configured.
+     * @Error Throw a {@link RuntimeException} if something goes wrong creating the client.
+     */
     private WebClient buildPokeApiWebClient() {
 
         try {

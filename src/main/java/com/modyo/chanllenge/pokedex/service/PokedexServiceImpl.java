@@ -5,6 +5,7 @@ import com.modyo.chanllenge.pokedex.model.api.CommonResponseDTO;
 import com.modyo.chanllenge.pokedex.model.api.PokemonResponseDTO;
 import com.modyo.chanllenge.pokedex.model.pokeapi.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
@@ -29,11 +30,12 @@ public class PokedexServiceImpl implements PokedexService {
      * @param page page to be serialized.
      * @return {@link CommonResponseDTO} with pokemon data.
      */
+    @Cacheable("pokemonCache")
     public CommonResponseDTO<PokemonResponseDTO> listPokemons(int page) {
 
         MultiPokeApiResponseDTO allPokemonResults = client.getPokemons(page);
 
-        if (CollectionUtils.isEmpty(allPokemonResults.getResults())) return null;
+        if (allPokemonResults == null || CollectionUtils.isEmpty(allPokemonResults.getResults())) return null;
 
         List<Pokemon> pokemons = Flux.fromIterable(allPokemonResults.getResults())
                 .map(Result::getName)
@@ -57,7 +59,7 @@ public class PokedexServiceImpl implements PokedexService {
         List<PokemonResponseDTO> pokemonResponses = pokemons.stream().map(this::mapToPokemonResponse).collect(Collectors.toList());
 
         return CommonResponseDTO.<PokemonResponseDTO>builder()
-                    .currentPage((int) Math.floor(totalItems / PokeApiHttpClient.ITEMS_PER_PAGE))
+                    .totalPages((int) Math.floor(totalItems / PokeApiHttpClient.ITEMS_PER_PAGE))
                     .totalItems(totalItems)
                     .currentPage(page)
                     .items(pokemonResponses)

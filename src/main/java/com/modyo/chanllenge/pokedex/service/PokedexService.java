@@ -1,11 +1,12 @@
 package com.modyo.chanllenge.pokedex.service;
 
-import com.modyo.chanllenge.pokedex.model.pokeapi.Pokemon;
+import com.modyo.chanllenge.pokedex.model.api.CommonResponseDTO;
+import com.modyo.chanllenge.pokedex.model.api.PokemonResponseDTO;
 
 import java.util.List;
 
 public interface PokedexService {
 
-    List<Pokemon> listPokemons(int page);
+    CommonResponseDTO<PokemonResponseDTO> listPokemons(int page);
 
 }

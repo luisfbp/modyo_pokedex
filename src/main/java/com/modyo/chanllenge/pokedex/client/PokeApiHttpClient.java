@@ -1,10 +1,13 @@
 package com.modyo.chanllenge.pokedex.client;
 
+import com.modyo.chanllenge.pokedex.exception.CustomApiThrowable;
 import com.modyo.chanllenge.pokedex.model.pokeapi.MultiPokeApiResponseDTO;
 import com.modyo.chanllenge.pokedex.model.pokeapi.Pokemon;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
@@ -16,10 +19,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-import javax.net.ssl.SSLException;
-
+/**
+ * HTTP Client to consume Poke API endpoints.
+ */
 @Component
 public class PokeApiHttpClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PokeApiHttpClient.class);
 
     private static final String POKEMON_ENDPOINT = "/pokemon";
 
@@ -27,12 +33,12 @@ public class PokeApiHttpClient {
 
     private static final String LIMIT_QUERY_PARAM = "limit";
 
-    private static final int ITEMS_PER_PAGE = 20;
+    public static final int ITEMS_PER_PAGE = 20;
 
     @Value("${api.pokeapi.host}")
     private String pokeApiHost;
 
-    @Cacheable("")
+    @Cacheable("pokemonCache")
     public Mono<Pokemon> getPokemon(String name) {
         return buildPokeApiWebClient().get()
                 .uri(POKEMON_ENDPOINT + "/{name}", name)
@@ -40,6 +46,7 @@ public class PokeApiHttpClient {
                 .bodyToMono(Pokemon.class);
     }
 
+    @Cacheable("pokemonCache")
     public MultiPokeApiResponseDTO getPokemons(int page) {
 
         int offset = page * ITEMS_PER_PAGE;
@@ -76,9 +83,10 @@ public class PokeApiHttpClient {
                                     .maxInMemorySize(16 * 1024 * 1024))
                             .build())
                     .build();
-        } catch (SSLException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            var message =  "Error trying to create WebClient object";
+            LOGGER.error(message);
+            throw new CustomApiThrowable(message, e);
         }
-        return null;
     }
 }
